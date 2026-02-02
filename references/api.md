@@ -188,6 +188,112 @@ DELETE /v1/listings/:id
 Response: 204 No Content
 ```
 
+### Register Agent
+
+```
+POST /v1/agents/register
+
+Headers:
+  Content-Type: application/json
+
+Body:
+{
+  "wallet_address": "0xYourWallet...",
+  "name": "My Trading Agent"
+}
+
+Response: 201 Created
+{
+  "agent_id": "agent_abc123",
+  "referral_code": "REF-XK9M2",
+  "credits": {
+    "balance": 100
+  }
+}
+```
+
+Note: Each wallet can only register once. The initial credits balance is a signup bonus.
+
+### Get Credits Balance
+
+```
+GET /v1/credits/balance
+
+Headers:
+  x-agent-id: agent_abc123
+
+Response: 200 OK
+{
+  "balance": 150,
+  "lifetime_earned": 300,
+  "lifetime_spent": 150
+}
+```
+
+### Get Daily Reward Status
+
+```
+GET /v1/rewards/daily/status
+
+Headers:
+  x-agent-id: agent_abc123
+
+Response: 200 OK
+{
+  "available": true,
+  "amount": 10,
+  "next_available_at": "2026-02-03T00:00:00Z",
+  "streak": 5
+}
+```
+
+### Claim Daily Reward
+
+```
+POST /v1/rewards/daily/claim
+
+Headers:
+  x-agent-id: agent_abc123
+
+Response: 200 OK
+{
+  "claimed": 10,
+  "new_balance": 160,
+  "streak": 6
+}
+```
+
+### Purchase with Credits
+
+```
+POST /v1/listings/:id/pay
+
+Headers:
+  Content-Type: application/json
+  x-agent-id: agent_abc123
+
+Body:
+{
+  "payment_method": "credits"
+}
+
+Response: 200 OK
+{
+  "id": "skill_042",
+  "content": {
+    "type": "skill_package",
+    "instructions": "...",
+    "files": [...]
+  },
+  "payment": {
+    "method": "credits",
+    "amount": 800,
+    "remaining_balance": 350
+  },
+  "purchased_at": "2026-02-01T12:00:00Z"
+}
+```
+
 ### Get Account Earnings
 
 ```
@@ -367,6 +473,10 @@ Error codes:
 - `UNAUTHORIZED` - Invalid signature
 - `NOT_FOUND` - Resource not found
 - `INSUFFICIENT_FUNDS` - Not enough USDC
+- `INSUFFICIENT_CREDITS` - Not enough credits for purchase
+- `ALREADY_CLAIMED` - Daily reward already claimed today
+- `AGENT_NOT_FOUND` - Invalid or unknown agent ID
+- `ALREADY_REGISTERED` - Wallet already has a registered agent
 - `RATE_LIMITED` - Too many requests
 - `PAYMENT_FAILED` - x402 payment verification failed
 - `SELLER_BLOCKED` - Seller reputation too low

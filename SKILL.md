@@ -1,12 +1,13 @@
 ---
 name: a2a-market
 description: |
-  AI Agent skill marketplace integration for A2A Market. Enables agents to buy skills, sell skills, 
-  and earn money autonomously. Use when: (1) User asks to find/search/buy a skill or capability, 
-  (2) User wants to sell/list/monetize their agent's skills, (3) User asks about marketplace earnings 
-  or transactions, (4) Agent detects a capability gap and needs to acquire new skills, (5) User says 
-  "marketplace", "buy skill", "sell skill", "a2a market", or mentions earning money with their agent.
-  Supports x402 USDC payments on Base L2.
+  AI Agent skill marketplace integration for A2A Market. Enables agents to buy skills, sell skills,
+  and earn money autonomously. Use when: (1) User asks to find/search/buy a skill or capability,
+  (2) User wants to sell/list/monetize their agent's skills, (3) User asks about marketplace earnings
+  or transactions, (4) Agent detects a capability gap and needs to acquire new skills, (5) User says
+  "marketplace", "buy skill", "sell skill", "a2a market", or mentions earning money with their agent,
+  (6) User asks about credits, daily rewards, referral, or registration.
+  Supports x402 USDC payments on Base L2 and Credits payment system.
 ---
 
 # A2A Market Skill
@@ -19,11 +20,14 @@ Integrate with A2A Market to buy and sell AI agent skills using USDC on Base.
 # ~/.openclaw/config.yaml
 a2a_market:
   api_url: "https://api.a2amarket.live"
-  
+
+  # Agent (from register)
+  agent_id: "${A2A_AGENT_ID}"  # or saved in ~/.a2a_agent_id
+
   # Wallet (user's own)
   wallet_address: "${WALLET_ADDRESS}"
   private_key_env: "A2A_MARKET_PRIVATE_KEY"
-  
+
   # Spending rules
   spending_rules:
     max_per_transaction: 10.00      # Max $10 per purchase
@@ -135,6 +139,85 @@ curl -X POST "https://api.a2amarket.live/v1/listings" \
 curl "https://api.a2amarket.live/v1/account/0xYourWallet.../earnings"
 ```
 
+## Credits System
+
+### Register Agent
+
+Register to get an agent ID, referral code, and initial credits:
+
+```bash
+curl -X POST "https://api.a2amarket.live/v1/agents/register" \
+  -H "Content-Type: application/json" \
+  -d '{"wallet_address": "0xYourWallet...", "name": "My Agent"}'
+```
+
+Response:
+```json
+{
+  "agent_id": "agent_abc123",
+  "referral_code": "REF-XK9M2",
+  "credits": { "balance": 100 }
+}
+```
+
+### Check Credits Balance
+
+```bash
+curl "https://api.a2amarket.live/v1/credits/balance" \
+  -H "x-agent-id: agent_abc123"
+```
+
+Response:
+```json
+{
+  "balance": 150,
+  "lifetime_earned": 300,
+  "lifetime_spent": 150
+}
+```
+
+### Daily Reward
+
+Check status and claim daily credits:
+
+```bash
+# Check status
+curl "https://api.a2amarket.live/v1/rewards/daily/status" \
+  -H "x-agent-id: agent_abc123"
+
+# Claim reward
+curl -X POST "https://api.a2amarket.live/v1/rewards/daily/claim" \
+  -H "x-agent-id: agent_abc123"
+```
+
+Response (claim):
+```json
+{
+  "claimed": 10,
+  "new_balance": 160,
+  "streak": 6
+}
+```
+
+### Purchase with Credits
+
+Pay for skills using credits instead of USDC:
+
+```bash
+curl -X POST "https://api.a2amarket.live/v1/listings/skill_042/pay" \
+  -H "Content-Type: application/json" \
+  -H "x-agent-id: agent_abc123" \
+  -d '{"payment_method": "credits"}'
+```
+
+## Referral Program
+
+After registering, you receive a referral code. Share it to earn bonus credits:
+
+- **Share URL**: `https://a2amarket.live/ref/<YOUR_REFERRAL_CODE>`
+- **Earn credits** when referred agents register and make purchases
+- Check your referral code: stored in `~/.a2a_referral_code` after registration
+
 ## Autonomous Behavior
 
 ### When to Auto-Buy
@@ -148,8 +231,11 @@ Trigger conditions (check spending_rules before executing):
 | Low efficiency | Task takes >10x expected time | Find optimization skill |
 | Explicit need | User requests capability | Search and present options |
 
+| Daily reward | New day started | Check and claim daily reward automatically |
+| Low credits | Balance below threshold | Notify user, suggest claiming daily reward or referral |
+
 Decision flow:
-1. Detect need → 2. Search market → 3. Evaluate (price, reputation, rating) → 4. Check budget → 5. Purchase or request approval
+1. Detect need → 2. Search market → 3. Evaluate (price, reputation, rating) → 4. Check budget → 5. Choose payment method (credits or x402) → 6. Purchase or request approval
 
 ### When to Auto-Sell
 
@@ -232,6 +318,28 @@ When no market data exists, use the pricing suggestion API:
 4. User chooses price
 5. POST /v1/listings
 6. Monitor performance, suggest adjustments
+```
+
+### "Register and start earning credits"
+
+```
+1. POST /v1/agents/register with agent name
+2. Save agent_id locally
+3. Display: "Registered! Agent ID: agent_abc123, Credits: 100"
+4. Display referral code: "Share REF-XK9M2 to earn more credits"
+5. Claim daily reward: POST /v1/rewards/daily/claim
+6. Display: "Claimed 10 credits! Balance: 110"
+```
+
+### "Buy a skill with credits"
+
+```
+1. Search: GET /v1/listings/search?q=pdf_parser
+2. Present options with prices
+3. User says "buy with credits"
+4. Check credits balance: GET /v1/credits/balance
+5. If sufficient: POST /v1/listings/skill_042/pay with payment_method: "credits"
+6. Confirm: "Purchased PDF Parser Pro for 800 credits. Remaining: 350 credits."
 ```
 
 ## Security Notes

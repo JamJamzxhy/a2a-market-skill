@@ -49,13 +49,18 @@ class Skill:
     rating: float
     sales: int
 
+AGENT_ID_FILE = os.path.expanduser("~/.a2a_agent_id")
+REFERRAL_CODE_FILE = os.path.expanduser("~/.a2a_referral_code")
+
+
 class A2AClient:
     def __init__(
         self,
         wallet_address: str,
         private_key: str,
         api_url: str = API_URL,
-        spending_rules: Optional[SpendingRules] = None
+        spending_rules: Optional[SpendingRules] = None,
+        agent_id: Optional[str] = None
     ):
         self.wallet_address = wallet_address
         self.private_key = private_key
@@ -63,6 +68,23 @@ class A2AClient:
         self.rules = spending_rules or SpendingRules()
         self.daily_spent = 0.0
         self.account = Account.from_key(private_key)
+        self.agent_id = agent_id or self._load_agent_id()
+
+    def _load_agent_id(self) -> Optional[str]:
+        """Load agent_id from environment or file."""
+        agent_id = os.getenv("A2A_AGENT_ID")
+        if agent_id:
+            return agent_id
+        if os.path.exists(AGENT_ID_FILE):
+            with open(AGENT_ID_FILE) as f:
+                return f.read().strip()
+        return None
+
+    def _agent_headers(self) -> Dict[str, str]:
+        """Get headers with agent ID for Credits API calls."""
+        if not self.agent_id:
+            raise ValueError("Agent ID required. Call register() first.")
+        return {"x-agent-id": self.agent_id}
     
     def _sign_request(self, method: str, path: str, body: str = "") -> Dict[str, str]:
         """Sign API request for authentication."""
@@ -140,22 +162,26 @@ class A2AClient:
     def purchase(
         self,
         skill_id: str,
-        confirm_callback: Optional[callable] = None
+        confirm_callback: Optional[callable] = None,
+        payment_method: str = "x402"
     ) -> Dict[str, Any]:
         """
-        Purchase a skill using x402 payment protocol.
-        
+        Purchase a skill using x402 payment or credits.
+
         Args:
             skill_id: ID of the skill to purchase
             confirm_callback: Optional callback for confirmation (returns True to proceed)
-        
+            payment_method: "x402" for USDC payment, "credits" for credits payment
+
         Returns:
             Skill content if successful
-        
+
         Raises:
             ValueError: If budget rules prevent purchase
             Exception: If payment or API fails
         """
+        if payment_method == "credits":
+            return self.purchase_with_credits(skill_id)
         # Get skill details first
         skill = self.get_skill(skill_id)
         price = skill["price"]
@@ -276,6 +302,101 @@ class A2AClient:
         response.raise_for_status()
         return response.json().get("purchases", [])
     
+    def register(self, name: str) -> Dict[str, Any]:
+        """
+        Register as an agent and receive initial credits.
+
+        Args:
+            name: Display name for the agent
+
+        Returns:
+            {"agent_id": "...", "referral_code": "...", "credits": {"balance": 100}}
+        """
+        body = json.dumps({
+            "wallet_address": self.wallet_address,
+            "name": name
+        })
+
+        response = requests.post(
+            f"{self.api_url}/v1/agents/register",
+            headers={"Content-Type": "application/json"},
+            data=body
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        # Save agent_id and referral_code locally
+        self.agent_id = data["agent_id"]
+        with open(AGENT_ID_FILE, "w") as f:
+            f.write(self.agent_id)
+        with open(REFERRAL_CODE_FILE, "w") as f:
+            f.write(data.get("referral_code", ""))
+
+        return data
+
+    def get_credits_balance(self) -> Dict[str, Any]:
+        """
+        Get credits balance.
+
+        Returns:
+            {"balance": 150, "lifetime_earned": 300, "lifetime_spent": 150}
+        """
+        response = requests.get(
+            f"{self.api_url}/v1/credits/balance",
+            headers=self._agent_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_daily_reward_status(self) -> Dict[str, Any]:
+        """
+        Check daily reward status.
+
+        Returns:
+            {"available": true, "amount": 10, "next_available_at": "...", "streak": 5}
+        """
+        response = requests.get(
+            f"{self.api_url}/v1/rewards/daily/status",
+            headers=self._agent_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def claim_daily_reward(self) -> Dict[str, Any]:
+        """
+        Claim the daily reward credits.
+
+        Returns:
+            {"claimed": 10, "new_balance": 160, "streak": 6}
+        """
+        response = requests.post(
+            f"{self.api_url}/v1/rewards/daily/claim",
+            headers=self._agent_headers()
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def purchase_with_credits(self, skill_id: str) -> Dict[str, Any]:
+        """
+        Purchase a skill using credits instead of USDC.
+
+        Args:
+            skill_id: ID of the skill to purchase
+
+        Returns:
+            Skill content and payment details
+        """
+        headers = self._agent_headers()
+        headers["Content-Type"] = "application/json"
+
+        response = requests.post(
+            f"{self.api_url}/v1/listings/{skill_id}/pay",
+            headers=headers,
+            data=json.dumps({"payment_method": "credits"})
+        )
+        response.raise_for_status()
+        return response.json()
+
     def get_price_suggestion(
         self,
         skill_name: str,
@@ -359,23 +480,45 @@ class A2AClient:
 # Example usage
 if __name__ == "__main__":
     import sys
-    
+
     wallet = os.getenv("WALLET_ADDRESS")
     key = os.getenv("A2A_MARKET_PRIVATE_KEY")
-    
+
     if not wallet or not key:
         print("Set WALLET_ADDRESS and A2A_MARKET_PRIVATE_KEY environment variables")
         sys.exit(1)
-    
+
     client = A2AClient(wallet, key)
-    
+
+    # Register (first time only)
+    if not client.agent_id:
+        print("Registering agent...")
+        reg = client.register("My Agent")
+        print(f"  Agent ID: {reg['agent_id']}")
+        print(f"  Referral Code: {reg['referral_code']}")
+        print(f"  Initial Credits: {reg['credits']['balance']}")
+
+    # Check credits balance
+    print("\nCredits balance...")
+    balance = client.get_credits_balance()
+    print(f"  Balance: {balance['balance']} credits")
+
+    # Claim daily reward
+    print("\nDaily reward...")
+    status = client.get_daily_reward_status()
+    if status["available"]:
+        reward = client.claim_daily_reward()
+        print(f"  Claimed {reward['claimed']} credits! Balance: {reward['new_balance']}")
+    else:
+        print(f"  Already claimed. Next: {status['next_available_at']}")
+
     # Search example
-    print("Searching for 'code review' skills...")
+    print("\nSearching for 'code review' skills...")
     skills = client.search("code review", max_price=15)
-    
+
     for s in skills[:5]:
-        print(f"  [{s.id}] {s.name} - ${s.price} (⭐{s.rating}, rep:{s.reputation})")
-    
+        print(f"  [{s.id}] {s.name} - ${s.price} (rating:{s.rating}, rep:{s.reputation})")
+
     # Check earnings
     print("\nChecking earnings...")
     earnings = client.get_earnings()
