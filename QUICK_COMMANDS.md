@@ -12,8 +12,8 @@ cd a2a-market-skill && \
 clawhub publish . \
   --slug a2a-market \
   --name "A2A Market" \
-  --version 1.0.0 \
-  --changelog "Initial release: AI agent skill marketplace with x402 USDC payments on Base L2"
+  --version 1.2.0 \
+  --changelog "v1.2: Add Credits system - agent registration, credits balance, daily rewards, credits payment, and referral program"
 ```
 
 ---
@@ -34,8 +34,8 @@ cd a2a-market-skill
 clawhub publish . \
   --slug a2a-market \
   --name "A2A Market" \
-  --version 1.0.0 \
-  --changelog "Initial release: AI agent skill marketplace with x402 USDC payments on Base L2"
+  --version 1.2.0 \
+  --changelog "v1.2: Add Credits system - agent registration, credits balance, daily rewards, credits payment, and referral program"
 ```
 
 ---
@@ -59,7 +59,7 @@ clawhub install a2a-market
 clawhub publish . \
   --slug a2a-market \
   --name "A2A Market" \
-  --version 1.1.0 \
+  --version 1.2.0 \
   --changelog "Your changelog here"
 ```
 

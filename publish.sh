@@ -23,8 +23,8 @@ echo -e "${NC}"
 # 配置
 SKILL_NAME="a2a-market"
 SKILL_DISPLAY_NAME="A2A Market"
-VERSION="1.0.0"
-CHANGELOG="Initial release: AI agent skill marketplace with x402 USDC payments on Base L2. Features include skill search, purchase, listing, earnings tracking, autonomous buying/selling triggers, and cold-start pricing suggestions."
+VERSION="1.2.0"
+CHANGELOG="v1.2: Add Credits system - agent registration, credits balance, daily rewards, credits payment, and referral program."
 
 # 检查是否在 skill 目录
 if [ ! -f "SKILL.md" ]; then

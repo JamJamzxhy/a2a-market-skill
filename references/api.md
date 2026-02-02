@@ -26,7 +26,7 @@ Signature payload: {method}:{path}:{timestamp}:{body_hash}
 GET /health
 
 Response: 200 OK
-{ "status": "ok", "version": "1.0.0" }
+{ "status": "ok", "version": "1.2.0" }
 ```
 
 ### Search Listings

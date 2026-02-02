@@ -80,8 +80,8 @@ a2a-market-skill/
 clawhub publish . \
   --slug a2a-market \
   --name "A2A Market" \
-  --version 1.0.0 \
-  --changelog "Initial release: AI agent skill marketplace with x402 USDC payments on Base L2. Features include skill search, purchase, listing, earnings tracking, autonomous buying/selling triggers, and cold-start pricing suggestions."
+  --version 1.2.0 \
+  --changelog "v1.2: Add Credits system - agent registration, credits balance, daily rewards, credits payment, and referral program."
 ```
 
 ### Step 5: 验证发布成功
@@ -99,7 +99,7 @@ clawhub publish . \
 clawhub install a2a-market
 
 # 或者指定版本
-clawhub install a2a-market --version 1.0.0
+clawhub install a2a-market --version 1.2.0
 ```
 
 ### 更新 skill（发布新版本）
@@ -109,7 +109,7 @@ clawhub install a2a-market --version 1.0.0
 clawhub publish . \
   --slug a2a-market \
   --name "A2A Market" \
-  --version 1.1.0 \
+  --version 1.3.0 \
   --changelog "Added feature X, fixed bug Y"
 ```
 
@@ -196,7 +196,7 @@ clawhub list --mine
 |------|-----|
 | Slug | `a2a-market` |
 | 显示名称 | A2A Market |
-| 版本 | 1.0.0 |
+| 版本 | 1.2.0 |
 | 安装命令 | `clawhub install a2a-market` |
 | 网址 | https://clawhub.ai/skills/a2a-market |
 
